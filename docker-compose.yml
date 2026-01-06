@@ -1,0 +1,12 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:latest
+    container_name: smarthome-mqtt
+    ports:
+      - "1883:1883" # For C# Backend
+      - "9001:9001" # For React Frontend (WebSockets)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped

@@ -1,0 +1,10 @@
+<Solution>
+    <Folder Name="/src/">
+        <Project Path="backend\src\SmartHome.Api\SmartHome.Api.csproj" />
+        <Project Path="backend\src\SmartHome.Domain\SmartHome.Domain.csproj" />
+        <Project Path="backend\src\SmartHome.Infrastructure\SmartHome.Infrastructure.csproj" />
+    </Folder>
+    <Folder Name="/items/">
+        <File Path="docker-compose.yml" />
+    </Folder>
+</Solution>
