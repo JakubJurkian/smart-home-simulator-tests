@@ -25,8 +25,7 @@ var app = builder.Build();
 // Here we define the request handling pipeline
 
 // Enable Swagger UI only in Dev env.
-if (app.Environment.IsDevelopment())
-{
+if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
     app.UseSwaggerUI(); // Generates the interactive HTML page
 }
