@@ -9,6 +9,7 @@ public class InMemoryDeviceRepository : IDeviceRepository
     [
         new LightBulb("Kitchen Main", "Kitchen"),
         new LightBulb("Bedroom Lamp", "Bedroom"),
+        new TemperatureSensor("Kitchen", "Kitchen"),
     ];
 
     public IEnumerable<Device> GetAll() => _devices;
