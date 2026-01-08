@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SmartHome.Domain.Interfaces;
+using SmartHome.Domain.Entities;
+using SmartHome.Api.Dtos;
 
 namespace SmartHome.Api.Controllers;
 
@@ -13,5 +15,17 @@ public class DevicesController(IDeviceRepository repo) : ControllerBase
     public IActionResult GetDevices()
     {
         return Ok(_repo.GetAll());
+    }
+    [HttpPost("lightbulb")] // api/devices/lightbulb
+    public IActionResult AddLightBulb([FromBody] CreateLightBulbRequest request)
+    {
+        // write data from DTO (form) to real entity
+        var newBulb = new LightBulb(request.Name, request.Room);
+        // Save to repo
+        _repo.Add(newBulb);
+
+        // Return 201 code 'Created' (Standard REST API)
+        // return id of that created obj
+        return CreatedAtAction(nameof(GetDevices), new { id = newBulb.Id }, newBulb);
     }
 }
