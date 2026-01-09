@@ -8,4 +8,5 @@ public interface IDeviceRepository
     Device? GetById(Guid id);
     void Add(Device device);
     void Update(Device device);
+    void Delete(Guid id);
 }

@@ -33,4 +33,15 @@ public class SqlDeviceRepository(SmartHomeDbContext context) : IDeviceRepository
         context.Devices.Update(device);
         context.SaveChanges();
     }
+    public void Delete(Guid id)
+    {
+        var device = context.Devices.Find(id);
+
+        if (device != null)
+        {
+            context.Devices.Remove(device);
+            
+            context.SaveChanges();
+        }
+    }
 }

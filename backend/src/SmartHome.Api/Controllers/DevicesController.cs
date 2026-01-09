@@ -97,4 +97,19 @@ public class DevicesController(IDeviceRepository repo) : ControllerBase
         }
         return BadRequest("This device does not support temperature readings.");
     }
+    [HttpDelete("{id}")]
+    public IActionResult Delete(Guid id)
+    {
+        var device = _repo.GetById(id);
+        
+        if (device == null)
+        {
+            return NotFound();
+        }
+
+        _repo.Delete(id);
+        
+        // 204 No Content
+        return NoContent();
+    }
 }
