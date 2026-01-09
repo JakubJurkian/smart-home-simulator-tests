@@ -15,4 +15,8 @@ public class InMemoryDeviceRepository : IDeviceRepository
     public IEnumerable<Device> GetAll() => _devices;
     public Device? GetById(Guid id) => _devices.FirstOrDefault(d => d.Id == id);
     public void Add(Device device) => _devices.Add(device);
+    public void Update(Device device)
+    {
+
+    }
 }

@@ -7,4 +7,5 @@ public interface IDeviceRepository
     IEnumerable<Device> GetAll();
     Device? GetById(Guid id);
     void Add(Device device);
+    void Update(Device device);
 }
