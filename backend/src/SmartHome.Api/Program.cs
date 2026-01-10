@@ -7,6 +7,8 @@ using SmartHome.Infrastructure.Repositories;
 using Serilog;
 using SmartHome.Infrastructure.Services;
 
+using SmartHome.Api.BackgroundServices;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog conf.
@@ -56,6 +58,8 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddHostedService<TcpSmartHomeServer>();
 
 var app = builder.Build();
 
