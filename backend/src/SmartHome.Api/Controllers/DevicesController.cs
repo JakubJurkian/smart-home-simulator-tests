@@ -60,7 +60,7 @@ public class DevicesController(IDeviceService service, ILogger<DevicesController
         return Ok(device); // Return 200 code + object
     }
 
-    [HttpPost("{id}/turn-on")]
+    [HttpPut("{id}/turn-on")]
     public IActionResult TurnOn(Guid id)
     {
         var userId = GetCurrentUserId();
@@ -77,7 +77,7 @@ public class DevicesController(IDeviceService service, ILogger<DevicesController
         return BadRequest("Could not turn on device (not found or not a light bulb).");
     }
 
-    [HttpPost("{id}/turn-off")]
+    [HttpPut("{id}/turn-off")]
     public IActionResult TurnOff(Guid id)
     {
         var userId = GetCurrentUserId();

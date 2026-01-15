@@ -312,7 +312,7 @@ function App() {
 
   const handleToggle = (id: string, action: "turn-on" | "turn-off") => {
     fetch(`${API_URL}/devices/${id}/${action}`, {
-      method: "POST",
+      method: "PUT",
       credentials: "include",
     })
       .then((res) => {
