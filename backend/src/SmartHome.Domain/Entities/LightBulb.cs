@@ -1,6 +1,6 @@
 namespace SmartHome.Domain.Entities;
 
-public class LightBulb(string name, string room) : Device(name, room, "LightBulb")
+public class LightBulb(string name, Guid roomId) : Device(name, roomId, "LightBulb")
 {
     public bool IsOn { get; private set; }
     public void TurnOn()

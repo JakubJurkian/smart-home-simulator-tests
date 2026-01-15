@@ -11,8 +11,8 @@ using SmartHome.Infrastructure.Persistence;
 namespace SmartHome.Infrastructure.Migrations
 {
     [DbContext(typeof(SmartHomeDbContext))]
-    [Migration("20260111165915_AddUserIdToDevices")]
-    partial class AddUserIdToDevices
+    [Migration("20260115230317_InitialRooms")]
+    partial class InitialRooms
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -35,8 +35,7 @@ namespace SmartHome.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Room")
-                        .IsRequired()
+                    b.Property<Guid>("RoomId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Type")
@@ -48,11 +47,56 @@ namespace SmartHome.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RoomId");
+
                     b.ToTable("Devices");
 
                     b.HasDiscriminator().HasValue("Device");
 
                     b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("SmartHome.Domain.Entities.MaintenanceLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MaintenanceLogs");
+                });
+
+            modelBuilder.Entity("SmartHome.Domain.Entities.Room", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Rooms");
                 });
 
             modelBuilder.Entity("SmartHome.Domain.Entities.User", b =>
@@ -106,6 +150,17 @@ namespace SmartHome.Infrastructure.Migrations
                         .HasColumnType("REAL");
 
                     b.HasDiscriminator().HasValue("TemperatureSensor");
+                });
+
+            modelBuilder.Entity("SmartHome.Domain.Entities.Device", b =>
+                {
+                    b.HasOne("SmartHome.Domain.Entities.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Room");
                 });
 #pragma warning restore 612, 618
         }

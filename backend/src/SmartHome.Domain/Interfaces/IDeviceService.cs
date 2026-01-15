@@ -9,8 +9,8 @@ public interface IDeviceService
 
     double? GetTemperature(Guid id, Guid userId);
 
-    Guid AddLightBulb(string name, string room, Guid userId);
-    Guid AddTemperatureSensor(string name, string room, Guid userId);
+    Guid AddLightBulb(string name, Guid roomId, Guid userId);
+    Guid AddTemperatureSensor(string name, Guid roomId, Guid userId);
 
     bool TurnOn(Guid id, Guid userId);
     bool TurnOff(Guid id, Guid userId);

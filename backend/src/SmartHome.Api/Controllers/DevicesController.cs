@@ -30,13 +30,13 @@ public class DevicesController(IDeviceService service, ILogger<DevicesController
     [HttpPost("lightbulb")] // api/devices/lightbulb
     public IActionResult AddLightBulb([FromBody] CreateLightBulbRequest request)
     {
-        logger.LogInformation("Request to add a new LightBulb: '{Name}' in '{Room}'", request.Name, request.Room);
+        logger.LogInformation("Request to add a new LightBulb: '{Name}' in '{Room}'", request.Name, request.RoomId);
 
 
         try
         {
             var userId = GetCurrentUserId();
-            var id = service.AddLightBulb(request.Name, request.Room, userId);
+            var id = service.AddLightBulb(request.Name, request.RoomId, userId);
             logger.LogInformation("Successfully created LightBulb with ID: {DeviceId}", id);
             return CreatedAtAction(nameof(GetDevices), new { id });
 
@@ -99,7 +99,7 @@ public class DevicesController(IDeviceService service, ILogger<DevicesController
     {
         logger.LogInformation("Request to add Sensor: '{Name}'", request.Name);
         var userId = GetCurrentUserId();
-        var id = service.AddTemperatureSensor(request.Name, request.Room, userId);
+        var id = service.AddTemperatureSensor(request.Name, request.RoomId, userId);
 
         logger.LogInformation("Created Sensor with ID: {DeviceId}", id);
         return CreatedAtAction(nameof(GetDeviceById), new { id }, new { id });
@@ -156,7 +156,7 @@ public class DevicesController(IDeviceService service, ILogger<DevicesController
         var dtos = devices.Select(d => new DeviceDto(
         d.Id,
         d.Name,
-        d.Room,
+        d.RoomId,
         d.GetType().Name,
         (d as LightBulb)?.IsOn,
         (d as TemperatureSensor)?.CurrentTemperature

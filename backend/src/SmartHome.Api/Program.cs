@@ -58,6 +58,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IMaintenanceLogRepository, MaintenanceLogRepository>();
 builder.Services.AddScoped<IMaintenanceLogService, MaintenanceLogService>();
 
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
