@@ -4,6 +4,14 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 // --- CONFIG & TYPES ---
 const API_URL = "http://localhost:5187/api";
 
+export interface MaintenanceLog {
+  id: string;
+  deviceId: string;
+  title: string;
+  description: string;
+  createdAt: string;
+}
+
 export interface Device {
   id: string;
   name: string;
@@ -23,6 +31,7 @@ export interface DeviceCardProps {
   device: Device;
   onDelete: (id: string) => void;
   onToggle: (id: string, action: "turn-on" | "turn-off") => void;
+  onOpenLogs: (device: Device) => void;
   temp?: number;
 }
 
@@ -119,7 +128,7 @@ const UserProfile = ({
         <h2 className="text-2xl font-bold text-gray-800">👤 User Profile</h2>
         <button
           onClick={onBack}
-          className="text-gray-500 hover:text-gray-800 px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 transition text-sm"
+          className="cursor-pointer text-gray-500 hover:text-gray-800 px-3 py-1 rounded border border-gray-300 hover:bg-gray-100 transition text-sm"
         >
           ← Back to Dashboard
         </button>
@@ -406,8 +415,249 @@ const ActionButton = ({
   );
 };
 
+const MaintenanceModal = ({
+  deviceId,
+  deviceName,
+  onClose,
+}: {
+  deviceId: string;
+  deviceName: string;
+  onClose: () => void;
+}) => {
+  const [logs, setLogs] = useState<MaintenanceLog[]>([]);
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // STATE FOR EDITING
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Fetch logs on mount
+  useEffect(() => {
+    fetch(`${API_URL}/logs/${deviceId}`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => {
+        setLogs(Array.isArray(data) ? data : []);
+        setIsLoading(false);
+      })
+      .catch((err) => console.error("Error loading logs:", err));
+  }, [deviceId]);
+
+  // Handle Form Submit (Create OR Update)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !desc) return;
+
+    try {
+      if (editingId) {
+        const res = await fetch(`${API_URL}/logs/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, description: desc }),
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error("Failed to update");
+
+        // Update local list
+        setLogs(
+          logs.map((log) =>
+            log.id === editingId ? { ...log, title, description: desc } : log
+          )
+        );
+
+        // Exit edit mode
+        setEditingId(null);
+      } else {
+        // --- CREATE LOGIC (POST) ---
+        const res = await fetch(`${API_URL}/logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId, title, description: desc }),
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error("Failed to add");
+
+        // Add to local list
+        const newLog: MaintenanceLog = {
+          id: Math.random().toString(), // temporary ID
+          deviceId,
+          title,
+          description: desc,
+          createdAt: new Date().toISOString(),
+        };
+        setLogs([newLog, ...logs]);
+      }
+
+      // Clear form
+      setTitle("");
+      setDesc("");
+    } catch (err) {
+      console.log(err);
+      alert("Operation failed. Try again.");
+    }
+  };
+
+  // Prepare form for editing
+  const startEdit = (log: MaintenanceLog) => {
+    setEditingId(log.id);
+    setTitle(log.title);
+    setDesc(log.description);
+  };
+
+  // Cancel edit mode
+  const cancelEdit = () => {
+    setEditingId(null);
+    setTitle("");
+    setDesc("");
+  };
+
+  // Delete log
+  const handleDeleteLog = async (id: string) => {
+    if (!confirm("Remove this entry?")) return;
+    try {
+      await fetch(`${API_URL}/logs/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      setLogs(logs.filter((l) => l.id !== id));
+
+      if (editingId === id) cancelEdit();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[80vh]">
+        {/* Header */}
+        <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+          <h3 className="font-bold text-lg text-gray-700 flex items-center gap-2">
+            🛠️ Service History{" "}
+            <span className="text-sm font-normal text-gray-500">
+              for {deviceName}
+            </span>
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 text-2xl leading-none cursor-pointer"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Scrollable List */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+          {isLoading ? (
+            <p className="text-center text-gray-500">Loading history...</p>
+          ) : logs.length === 0 ? (
+            <p className="text-center text-gray-400 italic">
+              No service logs yet.
+            </p>
+          ) : (
+            logs.map((log) => (
+              <div
+                key={log.id}
+                className={`p-3 rounded-lg border shadow-sm relative group transition-colors ${
+                  editingId === log.id
+                    ? "bg-blue-50 border-blue-300 ring-1 ring-blue-300"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <div className="flex justify-between items-start pr-16">
+                  <h4 className="font-bold text-gray-800 text-sm">
+                    {log.title}
+                  </h4>
+                  <span className="text-xs text-gray-400">
+                    {new Date(log.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-gray-600 text-sm mt-1 whitespace-pre-wrap">
+                  {log.description}
+                </p>
+
+                {/* ACTION BUTTONS */}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => startEdit(log)}
+                    className="p-1 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+                    title="Edit"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDeleteLog(log.id)}
+                    className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                    title="Delete"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Form (Footer) */}
+        <form
+          onSubmit={handleSubmit}
+          className={`p-4 border-t ${editingId ? "bg-blue-50" : "bg-white"}`}
+        >
+          {editingId && (
+            <div className="flex justify-between items-center mb-2 text-xs font-bold text-blue-600 uppercase tracking-wide">
+              <span>Editing Entry</span>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="text-gray-500 hover:text-gray-800 underline cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          <div className="mb-2">
+            <input
+              placeholder="Log Title (e.g. Battery Change)"
+              className="w-full p-2 border rounded text-sm mb-2"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+            <textarea
+              placeholder="Description..."
+              className="w-full p-2 border rounded text-sm"
+              rows={2}
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className={`w-full py-2 rounded font-medium text-sm transition text-white cursor-pointer ${
+              editingId
+                ? "bg-green-600 hover:bg-green-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {editingId ? "💾 Save Changes" : "➕ Add Entry"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // --- DEVICE CARD ---
-const DeviceCard = ({ device, onDelete, onToggle, temp }: DeviceCardProps) => {
+const DeviceCard = ({
+  device,
+  onDelete,
+  onToggle,
+  temp,
+  onOpenLogs,
+}: DeviceCardProps) => {
   const isBulb = device.type === "LightBulb";
   const isSensor = device.type === "TemperatureSensor";
   const bgClass = device.isOn
@@ -422,26 +672,39 @@ const DeviceCard = ({ device, onDelete, onToggle, temp }: DeviceCardProps) => {
         <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 truncate pr-6">
           {isBulb ? "💡" : "🌡️"} <span className="truncate">{device.name}</span>
         </h3>
-        <button
-          onClick={() => onDelete(device.id)}
-          className="cursor-pointer text-gray-400 hover:text-red-500 transition-colors p-1 shrink-0"
-          title="Delete"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        {/* ACTION BUTTONS CONTAINER */}
+        <div className="flex gap-1">
+          {/* NEW: LOGS BUTTON */}
+          <button
+            onClick={() => onOpenLogs(device)}
+            className="cursor-pointer text-gray-400 hover:text-blue-500 transition-colors p-1"
+            title="Service Logs"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-            />
-          </svg>
-        </button>
+            🛠️
+          </button>
+
+          {/* DELETE BUTTON */}
+          <button
+            onClick={() => onDelete(device.id)}
+            className="cursor-pointer text-gray-400 hover:text-red-500 transition-colors p-1"
+            title="Delete"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
       <p className="text-sm text-gray-500 mb-1 truncate">📍 {device.room}</p>
       <p className="text-xs text-gray-400 font-mono mb-4">
@@ -543,6 +806,9 @@ function App() {
   const [temps, setTemps] = useState<Record<string, number>>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const [selectedDeviceForLogs, setSelectedDeviceForLogs] =
+    useState<Device | null>(null);
 
   const [view, setView] = useState<"dashboard" | "profile">("dashboard");
   const lightbulbs = devices.filter((d) => d.type === "LightBulb");
@@ -743,6 +1009,7 @@ function App() {
                       device={device}
                       onDelete={handleDelete}
                       onToggle={handleToggle}
+                      onOpenLogs={setSelectedDeviceForLogs}
                       temp={temps[device.id]}
                     />
                   ))}
@@ -766,6 +1033,7 @@ function App() {
                       device={device}
                       onDelete={handleDelete}
                       onToggle={handleToggle}
+                      onOpenLogs={setSelectedDeviceForLogs}
                       temp={temps[device.id]}
                     />
                   ))}
@@ -784,6 +1052,15 @@ function App() {
           </>
         )}
       </div>
+
+      {/* --- RENDER MODAL IF DEVICE SELECTED --- */}
+      {selectedDeviceForLogs && (
+        <MaintenanceModal
+          deviceId={selectedDeviceForLogs.id}
+          deviceName={selectedDeviceForLogs.name}
+          onClose={() => setSelectedDeviceForLogs(null)}
+        />
+      )}
     </div>
   );
 }

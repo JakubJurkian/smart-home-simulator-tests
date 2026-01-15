@@ -31,4 +31,6 @@ public class SmartHomeDbContext(DbContextOptions<SmartHomeDbContext> options) : 
         // might add default configurations. Calling 'base' ensures we extend the logic 
         // rather than replacing or removing it.
     }
+
+    public DbSet<MaintenanceLog> MaintenanceLogs { get; set; }
 }
