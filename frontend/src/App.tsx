@@ -4,6 +4,12 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 // --- CONFIG & TYPES ---
 const API_URL = "http://localhost:5187/api";
 
+export interface Room {
+  id: string;
+  name: string;
+  userId: string;
+}
+
 export interface MaintenanceLog {
   id: string;
   deviceId: string;
@@ -15,7 +21,8 @@ export interface MaintenanceLog {
 export interface Device {
   id: string;
   name: string;
-  room: string;
+  roomId: string;
+  room: Room;
   type: string;
   isOn?: boolean;
   currentTemperature?: number;
@@ -706,7 +713,9 @@ const DeviceCard = ({
           </button>
         </div>
       </div>
-      <p className="text-sm text-gray-500 mb-1 truncate">📍 {device.room}</p>
+      <p className="text-sm text-gray-500 mb-1 truncate">
+        📍 {device.room?.name || "Unknown Room"}
+      </p>
       <p className="text-xs text-gray-400 font-mono mb-4">
         ID: {device.id.slice(0, 8)}...
       </p>
@@ -743,20 +752,95 @@ const DeviceCard = ({
   );
 };
 
-const DeviceForm = ({
+const RoomManager = ({
+  rooms,
   onAdd,
+  onDelete,
 }: {
-  onAdd: (name: string, room: string, type: string) => void;
+  rooms: Room[];
+  onAdd: (name: string) => void;
+  onDelete: (id: string) => void;
 }) => {
-  const [name, setName] = useState("");
-  const [room, setRoom] = useState("");
-  const [type, setType] = useState("lightbulb");
+  const [newRoomName, setNewRoomName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(name, room, type);
+    if (!newRoomName.trim()) return;
+    onAdd(newRoomName);
+    setNewRoomName("");
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
+      <h3 className="text-xl font-semibold mb-4 text-gray-700">
+        🏠 Manage Rooms
+      </h3>
+
+      {/* Existing Rooms List */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {rooms.length === 0 && (
+          <span className="text-gray-400 text-sm italic">
+            No rooms created yet.
+          </span>
+        )}
+
+        {rooms.map((room) => (
+          <div
+            key={room.id}
+            className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 border border-blue-100"
+          >
+            {room.name}
+            <button
+              onClick={() => onDelete(room.id)}
+              className="text-blue-400 hover:text-red-500 font-bold leading-none cursor-pointer"
+              title="Delete Room"
+            >
+              &times;
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Add New Room Form */}
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="text"
+          placeholder="New Room Name (e.g. Kitchen)"
+          value={newRoomName}
+          onChange={(e) => setNewRoomName(e.target.value)}
+          className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-64"
+        />
+        <button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer"
+        >
+          Add Room
+        </button>
+      </form>
+    </div>
+  );
+};
+
+const DeviceForm = ({
+  rooms,
+  onAdd,
+}: {
+  rooms: Room[];
+  onAdd: (name: string, roomId: string, type: string) => void;
+}) => {
+  const [name, setName] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [type, setType] = useState("LightBulb"); // Changed to match C# discriminator exact string just in case, or lowercase handling
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roomId) {
+      alert("Please select a room first!");
+      return;
+    }
+    onAdd(name, roomId, type);
     setName("");
-    setRoom("");
+    // We keep the room selected for easier multiple additions
   };
 
   return (
@@ -765,28 +849,42 @@ const DeviceForm = ({
         ➕ Add New Device
       </h3>
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        {/* Name Input */}
         <input
-          placeholder="Name"
+          placeholder="Device Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
           className="flex-1 p-2 border border-gray-300 rounded-lg w-full"
         />
-        <input
-          placeholder="Room"
-          value={room}
-          onChange={(e) => setRoom(e.target.value)}
+
+        {/* Room Select (Dropdown) */}
+        <select
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
           required
-          className="flex-1 p-2 border border-gray-300 rounded-lg w-full"
-        />
+          className="flex-1 p-2 border border-gray-300 rounded-lg bg-white w-full"
+        >
+          <option value="" disabled>
+            -- Select Room --
+          </option>
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Type Select */}
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
           className="p-2 border border-gray-300 rounded-lg bg-white w-full sm:w-auto"
         >
-          <option value="lightbulb">💡 Light Bulb</option>
-          <option value="sensor">🌡️ Temp Sensor</option>
+          <option value="LightBulb">💡 Light Bulb</option>
+          <option value="TemperatureSensor">🌡️ Temp Sensor</option>
         </select>
+
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg cursor-pointer transition-colors w-full sm:w-auto"
@@ -806,6 +904,8 @@ function App() {
   const [temps, setTemps] = useState<Record<string, number>>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   const [selectedDeviceForLogs, setSelectedDeviceForLogs] =
     useState<Device | null>(null);
@@ -843,9 +943,19 @@ function App() {
       });
   }, []);
 
+  const fetchRooms = useCallback(() => {
+    fetch(`${API_URL}/rooms`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => setRooms(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Failed to fetch rooms", err));
+  }, []);
+
   useEffect(() => {
-    if (user && view === "dashboard") fetchDevices();
-  }, [user, view, fetchDevices]);
+    if (user && view === "dashboard") {
+      fetchDevices();
+      fetchRooms();
+    }
+  }, [user, view, fetchDevices, fetchRooms]);
 
   const handleLoginSuccess = (userData: User) => setUser(userData);
 
@@ -860,15 +970,16 @@ function App() {
     setActionError(null);
   };
 
-  const handleAdd = (name: string, room: string, type: string) => {
+  const handleAdd = (name: string, roomId: string, type: string) => {
     fetch(`${API_URL}/devices/${type}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, room, type }),
+      body: JSON.stringify({ name, roomId, type }),
       credentials: "include",
     })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to add device.");
+        fetchDevices();
       })
       .catch((err) => showError(err.message));
   };
@@ -895,6 +1006,27 @@ function App() {
         })
         .catch((err) => showError(err.message));
     }
+  };
+
+  const handleAddRoom = (name: string) => {
+    fetch(`${API_URL}/rooms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(name), // Backend expects bare string via [FromBody]
+      credentials: "include",
+    }).then((res) => {
+      if (res.ok) fetchRooms(); // Refresh list
+      else alert("Failed to add room");
+    });
+  };
+
+  const handleDeleteRoom = (id: string) => {
+    if (!confirm("Delete room? Devices in this room might get orphaned!"))
+      return;
+    fetch(`${API_URL}/rooms/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    }).then(() => fetchRooms());
   };
 
   useEffect(() => {
@@ -991,7 +1123,13 @@ function App() {
           />
         ) : (
           <>
-            <DeviceForm onAdd={handleAdd} />
+            <RoomManager
+              rooms={rooms}
+              onAdd={handleAddRoom}
+              onDelete={handleDeleteRoom}
+            />
+
+            <DeviceForm onAdd={handleAdd} rooms={rooms} />
 
             {/* LIGHTING SECTION */}
             {lightbulbs.length > 0 && (
