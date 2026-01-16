@@ -1,6 +1,6 @@
 namespace SmartHome.Domain.Entities;
 
-public class TemperatureSensor(string name, string room) : Device(name, room, "TemperatureSensor")
+public class TemperatureSensor(string name, Guid roomId) : Device(name, roomId, "TemperatureSensor")
 {
     public double CurrentTemperature { get; private set; } = 21.0;
 

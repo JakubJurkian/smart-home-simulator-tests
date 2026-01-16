@@ -4,6 +4,12 @@ import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 // --- CONFIG & TYPES ---
 const API_URL = "http://localhost:5187/api";
 
+export interface Room {
+  id: string;
+  name: string;
+  userId: string;
+}
+
 export interface MaintenanceLog {
   id: string;
   deviceId: string;
@@ -15,7 +21,8 @@ export interface MaintenanceLog {
 export interface Device {
   id: string;
   name: string;
-  room: string;
+  roomId: string;
+  room: Room;
   type: string;
   isOn?: boolean;
   currentTemperature?: number;
@@ -664,17 +671,87 @@ const DeviceCard = ({
     ? "bg-yellow-50 border-yellow-200"
     : "bg-white border-gray-200";
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(device.name);
+
+  const handleSaveName = async () => {
+    if (!editedName.trim()) return;
+
+    try {
+      const res = await fetch(`${API_URL}/devices/${device.id}/name`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editedName),
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error("Failed to rename");
+
+      // Force page refresh or ideally update parent state.
+      // For simplicity in this structure, we just exit edit mode and let SignalR or refresh handle it,
+      // OR strictly speaking, we should have an 'onUpdate' prop from App.tsx.
+      // BUT, to make it look responsive immediately:
+      device.name = editedName; // Direct mutation for instant UI feedback (dirty but works for small apps)
+      setIsEditing(false);
+    } catch (err) {
+      console.log(err);
+      alert("Error renaming device");
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedName(device.name);
+    setIsEditing(false);
+  };
+
   return (
     <div
       className={`relative p-5 rounded-xl border shadow-sm transition-all duration-300 hover:shadow-md ${bgClass}`}
     >
       <div className="flex justify-between items-start mb-2">
-        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 truncate pr-6">
-          {isBulb ? "💡" : "🌡️"} <span className="truncate">{device.name}</span>
-        </h3>
-        {/* ACTION BUTTONS CONTAINER */}
-        <div className="flex gap-1">
-          {/* NEW: LOGS BUTTON */}
+        {/* HEADER: NAME OR INPUT */}
+        <div className="flex-1 pr-2">
+          {isEditing ? (
+            <div className="flex items-center gap-1">
+              <input
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                className="w-full p-1 border border-blue-300 rounded text-sm font-bold text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveName}
+                className="text-green-600 hover:bg-green-100 p-1 rounded cursor-pointer"
+                title="Save"
+              >
+                ✓
+              </button>
+              <button
+                onClick={handleCancel}
+                className="text-red-500 hover:bg-red-100 p-1 rounded cursor-pointer"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 truncate group">
+              <span>{isBulb ? "💡" : "🌡️"}</span>
+              <span className="truncate" title={device.name}>
+                {device.name}
+              </span>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity p-1 text-sm cursor-pointer"
+                title="Rename"
+              >
+                ✏️
+              </button>
+            </h3>
+          )}
+        </div>
+
+        <div className="flex gap-1 shrink-0 ml-2">
           <button
             onClick={() => onOpenLogs(device)}
             className="cursor-pointer text-gray-400 hover:text-blue-500 transition-colors p-1"
@@ -682,8 +759,6 @@ const DeviceCard = ({
           >
             🛠️
           </button>
-
-          {/* DELETE BUTTON */}
           <button
             onClick={() => onDelete(device.id)}
             className="cursor-pointer text-gray-400 hover:text-red-500 transition-colors p-1"
@@ -706,7 +781,10 @@ const DeviceCard = ({
           </button>
         </div>
       </div>
-      <p className="text-sm text-gray-500 mb-1 truncate">📍 {device.room}</p>
+
+      <p className="text-sm text-gray-500 mb-1 truncate">
+        📍 {device.room?.name || "Unknown"}
+      </p>
       <p className="text-xs text-gray-400 font-mono mb-4">
         ID: {device.id.slice(0, 8)}...
       </p>
@@ -743,20 +821,163 @@ const DeviceCard = ({
   );
 };
 
+const RoomManager = ({
+  rooms,
+  onAdd,
+  onDelete,
+  onRename,
+}: {
+  rooms: Room[];
+  onAdd: (name: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, newName: string) => void;
+}) => {
+  const [newRoomName, setNewRoomName] = useState("");
+
+  // Stan do edycji: trzymamy ID edytowanego pokoju i jego tymczasową nazwę
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const handleAddSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRoomName.trim()) return;
+    onAdd(newRoomName);
+    setNewRoomName("");
+  };
+
+  // Rozpoczęcie edycji (kliknięcie w nazwę lub ołówek)
+  const startEditing = (room: Room) => {
+    setEditingId(room.id);
+    setEditName(room.name);
+  };
+
+  // Zapisanie edycji (Enter lub przycisk)
+  const saveEdit = () => {
+    if (editingId && editName.trim()) {
+      onRename(editingId, editName);
+      setEditingId(null);
+    }
+  };
+
+  // Anulowanie (Esc)
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-8">
+      <h3 className="text-xl font-semibold mb-4 text-gray-700">
+        🏠 Manage Rooms
+      </h3>
+
+      <div className="flex flex-wrap gap-3 mb-6">
+        {rooms.length === 0 && (
+          <span className="text-gray-400 text-sm italic">
+            No rooms created yet.
+          </span>
+        )}
+
+        {rooms.map((room) => (
+          <div
+            key={room.id}
+            className="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 border border-blue-100 shadow-sm transition-all hover:shadow-md"
+          >
+            {editingId === room.id ? (
+              <div className="flex items-center gap-1">
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEdit();
+                    if (e.key === "Escape") cancelEdit();
+                  }}
+                  className="w-24 p-1 text-xs border border-blue-300 rounded bg-white focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={saveEdit}
+                  className="text-green-600 hover:text-green-800 cursor-pointer"
+                >
+                  ✓
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <span
+                  onDoubleClick={() => startEditing(room)}
+                  className="cursor-pointer select-none"
+                  title="Double click to edit"
+                >
+                  {room.name}
+                </span>
+
+                <button
+                  onClick={() => startEditing(room)}
+                  className="text-blue-300 hover:text-blue-600 cursor-pointer ml-1"
+                >
+                  ✏️
+                </button>
+
+                <span className="text-blue-200">|</span>
+
+                <button
+                  onClick={() => onDelete(room.id)}
+                  className="text-red-300 hover:text-red-500 font-bold leading-none cursor-pointer text-lg"
+                  title="Delete Room & All Devices inside"
+                >
+                  &times;
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <form onSubmit={handleAddSubmit} className="flex gap-2 border-t pt-4">
+        <input
+          type="text"
+          placeholder="New Room Name..."
+          value={newRoomName}
+          onChange={(e) => setNewRoomName(e.target.value)}
+          className="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-64"
+        />
+        <button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition cursor-pointer"
+        >
+          Add Room
+        </button>
+      </form>
+    </div>
+  );
+};
+
 const DeviceForm = ({
+  rooms,
   onAdd,
 }: {
-  onAdd: (name: string, room: string, type: string) => void;
+  rooms: Room[];
+  onAdd: (name: string, roomId: string, type: string) => void;
 }) => {
   const [name, setName] = useState("");
-  const [room, setRoom] = useState("");
-  const [type, setType] = useState("lightbulb");
+  const [roomId, setRoomId] = useState("");
+  const [type, setType] = useState("LightBulb"); // Changed to match C# discriminator exact string just in case, or lowercase handling
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(name, room, type);
+    if (!roomId) {
+      alert("Please select a room first!");
+      return;
+    }
+    onAdd(name, roomId, type);
     setName("");
-    setRoom("");
+    // We keep the room selected for easier multiple additions
   };
 
   return (
@@ -765,28 +986,42 @@ const DeviceForm = ({
         ➕ Add New Device
       </h3>
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        {/* Name Input */}
         <input
-          placeholder="Name"
+          placeholder="Device Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
           className="flex-1 p-2 border border-gray-300 rounded-lg w-full"
         />
-        <input
-          placeholder="Room"
-          value={room}
-          onChange={(e) => setRoom(e.target.value)}
+
+        {/* Room Select (Dropdown) */}
+        <select
+          value={roomId}
+          onChange={(e) => setRoomId(e.target.value)}
           required
-          className="flex-1 p-2 border border-gray-300 rounded-lg w-full"
-        />
+          className="flex-1 p-2 border border-gray-300 rounded-lg bg-white w-full"
+        >
+          <option value="" disabled>
+            -- Select Room --
+          </option>
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Type Select */}
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
           className="p-2 border border-gray-300 rounded-lg bg-white w-full sm:w-auto"
         >
-          <option value="lightbulb">💡 Light Bulb</option>
-          <option value="sensor">🌡️ Temp Sensor</option>
+          <option value="LightBulb">💡 Light Bulb</option>
+          <option value="TemperatureSensor">🌡️ Temp Sensor</option>
         </select>
+
         <button
           type="submit"
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg cursor-pointer transition-colors w-full sm:w-auto"
@@ -806,6 +1041,8 @@ function App() {
   const [temps, setTemps] = useState<Record<string, number>>({});
   const [actionError, setActionError] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
+
+  const [rooms, setRooms] = useState<Room[]>([]);
 
   const [selectedDeviceForLogs, setSelectedDeviceForLogs] =
     useState<Device | null>(null);
@@ -843,9 +1080,19 @@ function App() {
       });
   }, []);
 
+  const fetchRooms = useCallback(() => {
+    fetch(`${API_URL}/rooms`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => setRooms(Array.isArray(data) ? data : []))
+      .catch((err) => console.error("Failed to fetch rooms", err));
+  }, []);
+
   useEffect(() => {
-    if (user && view === "dashboard") fetchDevices();
-  }, [user, view, fetchDevices]);
+    if (user && view === "dashboard") {
+      fetchDevices();
+      fetchRooms();
+    }
+  }, [user, view, fetchDevices, fetchRooms]);
 
   const handleLoginSuccess = (userData: User) => setUser(userData);
 
@@ -860,15 +1107,16 @@ function App() {
     setActionError(null);
   };
 
-  const handleAdd = (name: string, room: string, type: string) => {
+  const handleAdd = (name: string, roomId: string, type: string) => {
     fetch(`${API_URL}/devices/${type}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, room, type }),
+      body: JSON.stringify({ name, roomId, type }),
       credentials: "include",
     })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to add device.");
+        fetchDevices();
       })
       .catch((err) => showError(err.message));
   };
@@ -897,6 +1145,47 @@ function App() {
     }
   };
 
+  const handleAddRoom = (name: string) => {
+    fetch(`${API_URL}/rooms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(name), // Backend expects bare string via [FromBody]
+      credentials: "include",
+    }).then((res) => {
+      if (res.ok) fetchRooms(); // Refresh list
+      else alert("Failed to add room");
+    });
+  };
+
+  const handleRenameRoom = (id: string, newName: string) => {
+    fetch(`${API_URL}/rooms/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newName),
+      credentials: "include",
+    }).then((res) => {
+      if (res.ok) fetchRooms();
+      else alert("Failed to rename room");
+    });
+  };
+
+  const handleDeleteRoom = (id: string) => {
+    // Zmieniony komunikat
+    if (
+      !confirm(
+        "⚠️ WARNING: Deleting this room will also DELETE ALL DEVICES inside it.\n\nAre you sure?"
+      )
+    )
+      return;
+
+    fetch(`${API_URL}/rooms/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    }).then(() => {
+      fetchRooms();
+      fetchDevices();
+    });
+  };
   useEffect(() => {
     if (!user) return;
 
@@ -991,7 +1280,14 @@ function App() {
           />
         ) : (
           <>
-            <DeviceForm onAdd={handleAdd} />
+            <RoomManager
+              rooms={rooms}
+              onAdd={handleAddRoom}
+              onDelete={handleDeleteRoom}
+              onRename={handleRenameRoom}
+            />
+
+            <DeviceForm onAdd={handleAdd} rooms={rooms} />
 
             {/* LIGHTING SECTION */}
             {lightbulbs.length > 0 && (

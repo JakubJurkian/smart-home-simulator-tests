@@ -33,4 +33,6 @@ public class SmartHomeDbContext(DbContextOptions<SmartHomeDbContext> options) : 
     }
 
     public DbSet<MaintenanceLog> MaintenanceLogs { get; set; }
+
+    public DbSet<Room> Rooms { get; set; }
 }

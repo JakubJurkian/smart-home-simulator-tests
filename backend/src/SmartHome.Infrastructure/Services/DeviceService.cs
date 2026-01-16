@@ -15,17 +15,17 @@ public class DeviceService(IDeviceRepository repository, IDeviceNotifier notifie
         return repository.Get(id, userId);
     }
 
-    public Guid AddLightBulb(string name, string room, Guid userId)
+    public Guid AddLightBulb(string name, Guid roomId, Guid userId)
     {
-        var bulb = new LightBulb(name, room) { UserId = userId };
+        var bulb = new LightBulb(name, roomId) { UserId = userId };
         repository.Add(bulb);
         _ = notifier.NotifyDeviceChanged();
         return bulb.Id;
     }
 
-    public Guid AddTemperatureSensor(string name, string room, Guid userId)
+    public Guid AddTemperatureSensor(string name, Guid roomId, Guid userId)
     {
-        var sensor = new TemperatureSensor(name, room) { UserId = userId };
+        var sensor = new TemperatureSensor(name, roomId) { UserId = userId };
         repository.Add(sensor);
         _ = notifier.NotifyDeviceChanged();
         return sensor.Id;

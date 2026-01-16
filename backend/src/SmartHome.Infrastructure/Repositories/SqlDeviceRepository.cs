@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SmartHome.Domain.Entities;
 using SmartHome.Domain.Interfaces;
 using SmartHome.Infrastructure.Persistence;
@@ -19,7 +20,7 @@ public class SqlDeviceRepository(SmartHomeDbContext context) : IDeviceRepository
     public IEnumerable<Device> GetAll(Guid userId)
     {
         // Download all to list
-        return [.. context.Devices.Where(d => d.UserId == userId)];
+        return [.. context.Devices.Include(d => d.Room).Where(d => d.UserId == userId)];
     }
 
     public Device? Get(Guid id, Guid userId)
