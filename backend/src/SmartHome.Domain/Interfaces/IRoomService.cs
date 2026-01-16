@@ -7,5 +7,5 @@ public interface IRoomService
     void AddRoom(Guid userId, string name);
     IEnumerable<Room> GetUserRooms(Guid userId);
     void DeleteRoom(Guid id);
-    void UpdateRoom(Guid id, string newName);
+    void RenameRoom(Guid id, string newName);
 }

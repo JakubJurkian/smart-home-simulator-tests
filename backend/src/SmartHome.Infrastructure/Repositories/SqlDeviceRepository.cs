@@ -68,4 +68,14 @@ public class SqlDeviceRepository(SmartHomeDbContext context) : IDeviceRepository
             context.SaveChanges();
         }
     }
+
+    public void DeleteAllByRoomId(Guid roomId)
+    {
+        var devices = context.Devices.Where(d => d.RoomId == roomId).ToList();
+        if (devices.Count != 0)
+        {
+            context.Devices.RemoveRange(devices);
+            context.SaveChanges();
+        }
+    }
 }

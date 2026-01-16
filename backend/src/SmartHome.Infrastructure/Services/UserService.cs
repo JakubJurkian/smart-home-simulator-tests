@@ -3,7 +3,7 @@ using SmartHome.Domain.Interfaces;
 
 namespace SmartHome.Infrastructure.Services;
 
-public class UserService(IUserRepository userRepository, IDeviceRepository _deviceRepository) : IUserService
+public class UserService(IUserRepository userRepository, IDeviceRepository deviceRepository) : IUserService
 {
     public Guid Register(string username, string email, string password, string role = "User")
     {
@@ -86,7 +86,7 @@ public class UserService(IUserRepository userRepository, IDeviceRepository _devi
         var user = userRepository.GetById(id) ?? throw new Exception("User not found.");
 
         // remove all devices belonging to this user (cleanup)
-        _deviceRepository.DeleteAllByUserId(id);
+        deviceRepository.DeleteAllByUserId(id);
 
         // delete the user
         userRepository.Delete(user);

@@ -8,5 +8,5 @@ public interface IRoomRepository
     IEnumerable<Room> GetAllByUserId(Guid userId);
     Room? GetById(Guid id);
     void Delete(Guid id);
-    void Update(Guid id, string newName);
+    void Update(Room room);
 }

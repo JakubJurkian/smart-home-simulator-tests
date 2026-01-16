@@ -32,16 +32,9 @@ public class RoomRepository(SmartHomeDbContext context) : IRoomRepository
         }
     }
 
-    public void Update(Guid id, string newName)
+    public void Update(Room room)
     {
-        var room = context.Rooms.Find(id);
-    if (room == null)
-    {
-        throw new Exception("Room not found");
-        // Serwis/Controller will catch it and returns 404
-    }
-
-    room.Name = newName;
-    context.SaveChanges();
+        context.Rooms.Update(room);
+        context.SaveChanges();
     }
 }

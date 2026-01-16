@@ -3,7 +3,7 @@ using SmartHome.Domain.Interfaces;
 
 namespace SmartHome.Infrastructure.Services;
 
-public class RoomService(IRoomRepository roomRepository) : IRoomService
+public class RoomService(IRoomRepository roomRepository, IDeviceRepository deviceRepository) : IRoomService
 {
     public void AddRoom(Guid userId, string name)
     {
@@ -18,10 +18,13 @@ public class RoomService(IRoomRepository roomRepository) : IRoomService
 
     public void DeleteRoom(Guid id)
     {
+        deviceRepository.DeleteAllByRoomId(id);
         roomRepository.Delete(id);
     }
-    public void UpdateRoom(Guid id, string newName)
+    public void RenameRoom(Guid id, string newName)
     {
-        roomRepository.Update(id, newName);
+        var room = roomRepository.GetById(id) ?? throw new Exception("Room not found.");
+        room.Rename(newName);
+        roomRepository.Update(room);
     }
 }

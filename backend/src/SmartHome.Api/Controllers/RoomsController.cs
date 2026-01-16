@@ -25,8 +25,15 @@ public class RoomsController(IRoomService roomService) : ControllerBase
     [HttpDelete("{id}")]
     public IActionResult DeleteRoom(Guid id)
     {
-        roomService.DeleteRoom(id);
-        return NoContent();
+        try
+        {
+            roomService.DeleteRoom(id);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     private Guid GetCurrentUserId()
@@ -37,5 +44,19 @@ public class RoomsController(IRoomService roomService) : ControllerBase
             return userId;
         }
         throw new UnauthorizedAccessException("User not logged in");
+    }
+
+    [HttpPut("{id}")]
+    public IActionResult RenameRoom(Guid id, [FromBody] string newName)
+    {
+        try
+        {
+            roomService.RenameRoom(id, newName);
+            return Ok(new { message = "Room renamed successfully." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -1164,7 +1164,10 @@ function App() {
       body: JSON.stringify(newName),
       credentials: "include",
     }).then((res) => {
-      if (res.ok) fetchRooms();
+      if (res.ok) {
+        fetchRooms();
+        fetchDevices();
+      }
       else alert("Failed to rename room");
     });
   };
