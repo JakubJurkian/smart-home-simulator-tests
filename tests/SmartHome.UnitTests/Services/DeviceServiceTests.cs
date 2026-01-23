@@ -162,4 +162,36 @@ public class DeviceServiceTests
         result.Should().Contain(d => d.Name == "Lamp");
         result.Should().Contain(d => d.Name == "Sensor");
     }
+
+    [Fact]
+    public void GetTemperature_ShouldReturnValue_WhenDeviceIsSensor()
+    {
+        var deviceId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var sensor = new TemperatureSensor("Termometr", Guid.NewGuid()) { UserId = userId };
+        sensor.SetTemperature(23);
+
+        _deviceRepoMock.Setup(r => r.Get(deviceId, userId)).Returns(sensor);
+
+        var result = _deviceService.GetTemperature(deviceId, userId);
+
+        result.Should().NotBeNull();
+        result.Should().Be(23);
+    }
+
+    [Fact]
+    public void GetTemperature_ShouldReturnNull_WhenDeviceIsNotSensor()
+    {
+        var deviceId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var bulb = new LightBulb("Lamp", Guid.NewGuid()) { UserId = userId };
+
+        _deviceRepoMock.Setup(r => r.Get(deviceId, userId)).Returns(bulb);
+
+        var result = _deviceService.GetTemperature(deviceId, userId);
+
+        result.Should().BeNull();
+    }
 }
