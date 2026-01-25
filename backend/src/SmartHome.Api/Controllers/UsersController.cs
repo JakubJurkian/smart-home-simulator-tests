@@ -85,7 +85,7 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             if (currentUserId != id)
             {
                 logger.LogWarning("User {CurrentId} tried to modify account {TargetId}", currentUserId, id);
-                return Forbid(); // 403 Forbidden
+                return StatusCode(403);
             }
 
             _userService.UpdateUser(id, request.Username, request.Password);
@@ -124,7 +124,8 @@ public class UsersController(IUserService userService, ILogger<UsersController> 
             if (currentUserId != id)
             {
                 logger.LogWarning("Security Alert: User {CurrentId} tried to delete user {TargetId}", currentUserId, id);
-                return Forbid(); // 403 Forbidden
+                // ZMIANA TUTAJ: Zamiast Forbid() dajemy wprost kod 403
+                return StatusCode(403);
             }
 
             // Delete from database
