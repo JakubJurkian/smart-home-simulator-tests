@@ -11,36 +11,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # download code from repo
+      # 1. Checkout code from repo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # install .NET SDK 10
+      # 2. Install .NET SDK 10
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      # Download restore dependencies
+      # 3. Restore dependencies
       - name: Restore dependencies
         run: dotnet restore
 
-      # Build project
+      # 4. Build project
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      # Run Unit Tests
+      # 5. Run Unit Tests
       - name: Run Unit Tests
         run: dotnet test tests/SmartHome.UnitTests/SmartHome.UnitTests.csproj --no-build --configuration Release --verbosity normal
 
-      # Run Integration Tests
+      # 6. Run Integration Tests
       - name: Run Integration Tests
         run: dotnet test tests/SmartHome.IntegrationTests/SmartHome.IntegrationTests.csproj --no-build --configuration Release --verbosity normal
 
-      # Run BDD Tests (Reqnroll)
+      # 7. Run BDD Tests (Reqnroll)
       - name: Run BDD Tests
         run: dotnet test tests/SmartHome.BDDTests/SmartHome.BDDTests.csproj --no-build --configuration Release --verbosity normal
 
-      # Run Performance Test (NBomber) like console app (dotnet run)
+      # 8. Start API in background (Required for Performance Tests)
+      # We force HTTP and port 5187 to avoid SSL issues and match the test config
+      - name: Start API for Performance Tests
+        run: |
+          dotnet run --project src/SmartHome.Api/SmartHome.Api.csproj --configuration Release --urls "http://localhost:5187" &
+          echo "Waiting for API to start..."
+          sleep 15
+
+      # 9. Run Performance Test (NBomber)
       - name: Run Performance Tests
         run: dotnet run --project tests/SmartHome.PerformanceTests/SmartHome.PerformanceTests.csproj --configuration Release
