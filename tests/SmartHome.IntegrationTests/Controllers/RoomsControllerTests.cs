@@ -51,5 +51,4 @@ public class RoomsControllerTests(IntegrationTestFactory factory) : IClassFixtur
         rooms.Should().Contain(r => r.Name == "Salon");
     }
 }
-
 internal record TestRoomDto(string Id, string Name);
