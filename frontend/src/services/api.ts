@@ -60,7 +60,7 @@ export const api = {
 
   rooms: {
     getAll: () => request("/rooms"),
-    add: (name: string) => request("/rooms", "POST", name),
+    add: (name: string) => request("/rooms", "POST", { name }),
     delete: (id: string) => request(`/rooms/${id}`, "DELETE"),
     rename: (id: string, newName: string) =>
       request(`/rooms/${id}`, "PUT", newName),
