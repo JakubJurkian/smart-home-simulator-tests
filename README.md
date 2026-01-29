@@ -68,6 +68,16 @@ System posiada logikę użytkownika oraz umożliwia zarządzanie urządzeniami, 
 
 ---
 
+## Uruchomienie aplikacji
+
+```bash
+cd backend/src/SmartHome.Api; dotnet run
+```
+w drugim terminalu frontend
+```bash
+cd frontend; npm run dev
+```
+
 ## Uruchomienie testów
 
 ### Testy jednostkowe
