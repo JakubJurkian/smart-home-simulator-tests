@@ -160,4 +160,32 @@ public class DevicesController(IDeviceService service, ILogger<DevicesController
     ));
         return Ok(dtos);
     }
+
+    [HttpPut("{id}")]
+    public IActionResult RenameDevice(Guid id, [FromBody] string newName)
+    {
+        try
+        {
+            var userId = GetCurrentUserId();
+            var success = service.RenameDevice(id, userId, newName);
+
+            if (!success)
+            {
+                logger.LogWarning("Rename failed: Device {DeviceId} not found.", id);
+                return NotFound();
+            }
+
+            logger.LogInformation("Renamed device {DeviceId} to '{NewName}'", id, newName);
+            return Ok(new { message = "Device renamed successfully." });
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning("Rename failed: {Message}", ex.Message);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized();
+        }
+    }
 }

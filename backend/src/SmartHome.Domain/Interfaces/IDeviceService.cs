@@ -16,6 +16,7 @@ public interface IDeviceService
 
     bool DeleteDevice(Guid id, Guid userId);
     void UpdateTemperature(Guid id, double temp);
+    bool RenameDevice(Guid id, Guid userId, string newName);
 
     IEnumerable<Device> GetAllServersSide();
 }

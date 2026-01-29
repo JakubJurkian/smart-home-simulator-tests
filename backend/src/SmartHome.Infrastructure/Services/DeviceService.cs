@@ -111,9 +111,19 @@ public class DeviceService(IDeviceRepository repository, IDeviceNotifier notifie
         }
     }
 
+    public bool RenameDevice(Guid id, Guid userId, string newName)
+    {
+        var device = repository.Get(id, userId);
+        if (device == null) return false;
+
+        device.Rename(newName);
+        repository.Update(device);
+        _ = notifier.NotifyDeviceChanged();
+        return true;
+    }
+
     public IEnumerable<Device> GetAllServersSide()
     {
-        // Przekazujemy zapytanie do repozytorium
         return repository.GetAllServersSide();
     }
 }

@@ -55,7 +55,7 @@ export const api = {
     toggle: (id: string, action: "turn-on" | "turn-off") =>
       request(`/devices/${id}/${action}`, "PUT"),
     rename: (id: string, newName: string) =>
-      request(`/devices/${id}/name`, "PATCH", newName),
+      request(`/devices/${id}`, "PUT", newName),
   },
 
   rooms: {
